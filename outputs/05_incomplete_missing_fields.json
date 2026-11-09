@@ -1,0 +1,39 @@
+{
+  "project_name": {
+    "value": "Pine Ridge Community Center",
+    "confidence": 1.0
+  },
+  "contract_number": {
+    "value": null,
+    "confidence": 0.92
+  },
+  "change_order_number": {
+    "value": "CO-004",
+    "confidence": 1.0
+  },
+  "date": {
+    "value": "2026-11-06",
+    "confidence": 1.0
+  },
+  "requested_by": {
+    "value": null,
+    "confidence": 0.92
+  },
+  "description": {
+    "value": "Following the security review held on November 4, the owner has requested electronic access-control locks at the twelve principal entrance doors. Replace the standard lever locksets shown in the original hardware schedule with networked electronic locksets compatible with the facility access-control system. Include locksets, power transfer hinges where needed, programming, and commissioning.",
+    "confidence": 1.0
+  },
+  "amount": {
+    "value": null,
+    "confidence": 0.92
+  },
+  "schedule_impact_days": {
+    "value": null,
+    "confidence": 0.92
+  },
+  "approval_status": {
+    "value": "Under Review",
+    "confidence": 0.86
+  },
+  "needs_review": true
+}

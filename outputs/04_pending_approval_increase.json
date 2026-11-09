@@ -1,0 +1,39 @@
+{
+  "project_name": {
+    "value": "Harbor Point Residences",
+    "confidence": 1.0
+  },
+  "contract_number": {
+    "value": "HPR-2026-022",
+    "confidence": 1.0
+  },
+  "change_order_number": {
+    "value": "CO-012",
+    "confidence": 1.0
+  },
+  "date": {
+    "value": "2026-11-03",
+    "confidence": 1.0
+  },
+  "requested_by": {
+    "value": "David Kim, Construction Manager",
+    "confidence": 1.0
+  },
+  "description": {
+    "value": "The specified domestic water piping product has been discontinued by the manufacturer. Replace the affected piping on Building B, Levels 1 through 4, with Type L copper piping of equivalent approved capacity. Include fittings, supports, insulation, revised shop drawings, pressure testing, and required inspections.",
+    "confidence": 1.0
+  },
+  "amount": {
+    "value": 42500.0,
+    "confidence": 1.0
+  },
+  "schedule_impact_days": {
+    "value": 7,
+    "confidence": 1.0
+  },
+  "approval_status": {
+    "value": "Pending Approval",
+    "confidence": 1.0
+  },
+  "needs_review": false
+}

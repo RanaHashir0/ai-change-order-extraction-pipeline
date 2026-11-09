@@ -1,0 +1,39 @@
+{
+  "project_name": {
+    "value": "Westfield Water Treatment Upgrade",
+    "confidence": 1.0
+  },
+  "contract_number": {
+    "value": null,
+    "confidence": 0.0
+  },
+  "change_order_number": {
+    "value": "CO-021",
+    "confidence": 1.0
+  },
+  "date": {
+    "value": null,
+    "confidence": 0.0
+  },
+  "requested_by": {
+    "value": "Omar Ellis, Site Superintendent",
+    "confidence": 1.0
+  },
+  "description": {
+    "value": "Replace three raw-water transfer pumps and modify the associated base plates and electrical connections.",
+    "confidence": 1.0
+  },
+  "amount": {
+    "value": null,
+    "confidence": 0.0
+  },
+  "schedule_impact_days": {
+    "value": null,
+    "confidence": 0.0
+  },
+  "approval_status": {
+    "value": null,
+    "confidence": 0.0
+  },
+  "needs_review": true
+}

@@ -1,0 +1,39 @@
+{
+  "project_name": {
+    "value": "Riverside Medical Center Expansion",
+    "confidence": 1.0
+  },
+  "contract_number": {
+    "value": "RMC-2026-014",
+    "confidence": 1.0
+  },
+  "change_order_number": {
+    "value": "CO-017",
+    "confidence": 1.0
+  },
+  "date": {
+    "value": "2026-10-14",
+    "confidence": 1.0
+  },
+  "requested_by": {
+    "value": "Elena Brooks, Project Manager",
+    "confidence": 1.0
+  },
+  "description": {
+    "value": "Provide and install an underground electrical duct bank along the east service drive, as shown on revised site utility drawing E-204, Revision 3. Work includes saw cutting, trench excavation, four 4-inch PVC conduits, concrete encasement, warning tape, backfill, compaction testing, and connection to the existing electrical manhole. Restore disturbed paving to match existing conditions.",
+    "confidence": 1.0
+  },
+  "amount": {
+    "value": 18500.0,
+    "confidence": 1.0
+  },
+  "schedule_impact_days": {
+    "value": 12,
+    "confidence": 1.0
+  },
+  "approval_status": {
+    "value": "Approved",
+    "confidence": 1.0
+  },
+  "needs_review": false
+}

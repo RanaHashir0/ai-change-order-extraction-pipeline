@@ -1,0 +1,39 @@
+{
+  "project_name": {
+    "value": "Northgate Logistics Warehouse",
+    "confidence": 1.0
+  },
+  "contract_number": {
+    "value": "NGL-25-088",
+    "confidence": 1.0
+  },
+  "change_order_number": {
+    "value": "CO-009",
+    "confidence": 1.0
+  },
+  "date": {
+    "value": "2026-09-28",
+    "confidence": 1.0
+  },
+  "requested_by": {
+    "value": "Marco Ruiz, Owner Representative",
+    "confidence": 1.0
+  },
+  "description": {
+    "value": "Credit for deleted west-perimeter fencing",
+    "confidence": 1.0
+  },
+  "amount": {
+    "value": -8750.0,
+    "confidence": 1.0
+  },
+  "schedule_impact_days": {
+    "value": 0,
+    "confidence": 1.0
+  },
+  "approval_status": {
+    "value": "Approved",
+    "confidence": 1.0
+  },
+  "needs_review": false
+}

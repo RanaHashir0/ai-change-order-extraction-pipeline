@@ -1,0 +1,74 @@
+{
+  "01_complete_approved_increase": {
+    "project_name": "Riverside Medical Center Expansion",
+    "contract_number": "RMC-2026-014",
+    "change_order_number": "CO-017",
+    "date": "2026-10-14",
+    "requested_by": "Elena Brooks, Project Manager",
+    "description_contains": "underground electrical duct bank",
+    "amount": 18500.0,
+    "schedule_impact_days": 12,
+    "approval_status": "Approved",
+    "needs_review": false
+  },
+  "02_approved_price_decrease": {
+    "project_name": "Northgate Logistics Warehouse",
+    "contract_number": "NGL-25-088",
+    "change_order_number": "CO-009",
+    "date": "2026-09-28",
+    "requested_by": "Marco Ruiz, Owner Representative",
+    "description_contains": "ornamental metal fencing",
+    "amount": -8750.0,
+    "schedule_impact_days": 0,
+    "approval_status": "Approved",
+    "needs_review": false
+  },
+  "03_schedule_only_extension": {
+    "project_name": "Cedar Grove School Renovation",
+    "contract_number": "CGS-26-003",
+    "change_order_number": "CO-006",
+    "date": "2026-10-21",
+    "requested_by": "Priya Shah, Project Architect",
+    "description_contains": "concealed asbestos-containing floor adhesive",
+    "amount": null,
+    "schedule_impact_days": 18,
+    "approval_status": "Approved",
+    "needs_review": false
+  },
+  "04_pending_approval_increase": {
+    "project_name": "Harbor Point Residences",
+    "contract_number": "HPR-2026-022",
+    "change_order_number": "CO-012",
+    "date": "2026-11-03",
+    "requested_by": "David Kim, Construction Manager",
+    "description_contains": "Type L copper piping",
+    "amount": 42500.0,
+    "schedule_impact_days": 7,
+    "approval_status": "Pending",
+    "needs_review": false
+  },
+  "05_incomplete_missing_fields": {
+    "project_name": "Pine Ridge Community Center",
+    "contract_number": null,
+    "change_order_number": "CO-004",
+    "date": "2026-11-06",
+    "requested_by": null,
+    "description_contains": "electronic access-control locks",
+    "amount": null,
+    "schedule_impact_days": null,
+    "approval_status": "Under Review",
+    "needs_review": true
+  },
+  "06_conflicting_values_needs_review": {
+    "project_name": "Westfield Water Treatment Upgrade",
+    "contract_number": null,
+    "change_order_number": "CO-021",
+    "date": null,
+    "requested_by": "Omar Ellis, Site Superintendent",
+    "description_contains": "raw-water transfer pumps",
+    "amount": null,
+    "schedule_impact_days": null,
+    "approval_status": null,
+    "needs_review": true
+  }
+}

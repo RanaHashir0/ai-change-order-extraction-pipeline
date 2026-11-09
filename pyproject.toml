@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "change-order-extractor"
+version = "0.1.0"
+description = "AI-Powered Construction Change Order Extraction Pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pymupdf>=1.24.0",
+    "openai>=1.40.0",
+    "pydantic>=2.8.0",
+    "jsonschema>=4.23.0",
+    "python-dotenv>=1.0.1",
+    "pytesseract>=0.3.10",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.3.0",
+]
+
+[project.scripts]
+change-order-extractor = "change_order_extractor.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

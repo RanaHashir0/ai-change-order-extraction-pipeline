@@ -1,0 +1,154 @@
+{
+  "$defs": {
+    "FieldOutput_float_": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Extracted value, or null when absent, invalid, or conflicting.",
+          "title": "Value"
+        },
+        "confidence": {
+          "description": "Confidence score between 0.0 and 1.0 reflecting extraction certainty.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      "required": [
+        "confidence"
+      ],
+      "title": "FieldOutput[float]",
+      "type": "object"
+    },
+    "FieldOutput_int_": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Extracted value, or null when absent, invalid, or conflicting.",
+          "title": "Value"
+        },
+        "confidence": {
+          "description": "Confidence score between 0.0 and 1.0 reflecting extraction certainty.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      "required": [
+        "confidence"
+      ],
+      "title": "FieldOutput[int]",
+      "type": "object"
+    },
+    "FieldOutput_str_": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Extracted value, or null when absent, invalid, or conflicting.",
+          "title": "Value"
+        },
+        "confidence": {
+          "description": "Confidence score between 0.0 and 1.0 reflecting extraction certainty.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      "required": [
+        "confidence"
+      ],
+      "title": "FieldOutput[str]",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "JSON Schema Draft 2020-12 for AI-Powered Construction Change Order Extraction",
+  "properties": {
+    "project_name": {
+      "$ref": "#/$defs/FieldOutput_str_",
+      "description": "Formal name of the construction project."
+    },
+    "contract_number": {
+      "$ref": "#/$defs/FieldOutput_str_",
+      "description": "Contract or agreement reference number."
+    },
+    "change_order_number": {
+      "$ref": "#/$defs/FieldOutput_str_",
+      "description": "Change order identifier or number."
+    },
+    "date": {
+      "$ref": "#/$defs/FieldOutput_str_",
+      "description": "Date of change order formatted as ISO YYYY-MM-DD, or null."
+    },
+    "requested_by": {
+      "$ref": "#/$defs/FieldOutput_str_",
+      "description": "Requesting party, contractor, architect, or engineer."
+    },
+    "description": {
+      "$ref": "#/$defs/FieldOutput_str_",
+      "description": "Detailed description or scope of the requested change."
+    },
+    "amount": {
+      "$ref": "#/$defs/FieldOutput_float_",
+      "description": "Net financial amount (positive for increase, negative for decrease)."
+    },
+    "schedule_impact_days": {
+      "$ref": "#/$defs/FieldOutput_int_",
+      "description": "Net schedule impact in days (positive for extension, negative for reduction)."
+    },
+    "approval_status": {
+      "$ref": "#/$defs/FieldOutput_str_",
+      "description": "Document approval status (e.g. Approved, Pending, Rejected)."
+    },
+    "needs_review": {
+      "description": "Flag set to true if information is missing, ambiguous, conflicting, or low confidence.",
+      "title": "Needs Review",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "project_name",
+    "contract_number",
+    "change_order_number",
+    "date",
+    "requested_by",
+    "description",
+    "amount",
+    "schedule_impact_days",
+    "approval_status",
+    "needs_review"
+  ],
+  "title": "ChangeOrderExtractionResult",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

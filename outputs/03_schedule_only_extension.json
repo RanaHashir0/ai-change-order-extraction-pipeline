@@ -1,0 +1,39 @@
+{
+  "project_name": {
+    "value": "Cedar Grove School Renovation",
+    "confidence": 1.0
+  },
+  "contract_number": {
+    "value": "CGS-26-003",
+    "confidence": 1.0
+  },
+  "change_order_number": {
+    "value": "CO-006",
+    "confidence": 1.0
+  },
+  "date": {
+    "value": "2026-10-21",
+    "confidence": 1.0
+  },
+  "requested_by": {
+    "value": "Priya Shah, Project Architect",
+    "confidence": 1.0
+  },
+  "description": {
+    "value": "Extension of eighteen (18) calendar days due to concealed asbestos-containing floor adhesive",
+    "confidence": 0.9
+  },
+  "amount": {
+    "value": null,
+    "confidence": 0.95
+  },
+  "schedule_impact_days": {
+    "value": 18,
+    "confidence": 1.0
+  },
+  "approval_status": {
+    "value": "Approved",
+    "confidence": 1.0
+  },
+  "needs_review": false
+}
