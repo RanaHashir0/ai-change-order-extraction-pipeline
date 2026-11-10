@@ -190,3 +190,142 @@ def test_json_schema_draft_2020_12_validation(tmp_path: Path):
     with pytest.raises(jsonschema.ValidationError):
         v.validate(invalid_payload)
 
+
+def test_validator_estimated_amount_extracts_value_and_flags_review(sample_valid_raw):
+    """Test that explicit estimated amount extracts 6200.0 instead of null and triggers needs_review."""
+    sample_valid_raw.amount = InternalFieldExtraction(
+        value=6200.0,
+        evidence="Estimated amount\nADD $6,200.00 to contract value",
+        reasoning="Amount shown is an estimate and is not a final approved adjustment",
+    )
+
+    validator = ChangeOrderValidator()
+    doc_text = "Estimated amount: ADD $6,200.00 to contract value. The amount shown is an estimate and is not a final approved adjustment."
+    report = validator.validate(sample_valid_raw, doc_text)
+
+    assert report.cleaned_values["amount"] == 6200.0
+    assert report.needs_review is True
+    assert any(iss.issue_type == "estimate_only" for iss in report.issues)
+
+
+def test_validator_unsigned_document_returns_null_status(sample_valid_raw):
+    """Test that an unsigned document with no explicit status returns null, never inferring Pending."""
+    sample_valid_raw.approval_status = InternalFieldExtraction(
+        value="Awaiting signature",
+        evidence="Signature block: Awaiting signature",
+    )
+
+    validator = ChangeOrderValidator()
+    report = validator.validate(sample_valid_raw, "Change order document with no explicit status stated.")
+
+    assert report.cleaned_values["approval_status"] is None
+    assert report.needs_review is True
+
+
+def test_validator_distinguish_change_order_date_from_attachment_prep_date(sample_valid_raw):
+    """Test that attachment preparation date is not treated as contradiction unless document establishes conflict."""
+    # 1. Without explicit document conflict: attachment prep date is a different semantic field -> date preserved
+    sample_valid_raw.date = InternalFieldExtraction(
+        value="2026-11-04",
+        conflicts_detected=["Attachment preparation date: November 6, 2026"],
+    )
+    validator = ChangeOrderValidator()
+    normal_doc_text = "Cover sheet Date: November 4, 2026. Attachment B Prepared date: November 6, 2026."
+    report = validator.validate(sample_valid_raw, normal_doc_text)
+    assert report.cleaned_values["date"] == "2026-11-04"
+
+    # 2. With explicit conflict (e.g. Document 06): review note establishes disagreement -> date is set to null
+    doc_06_text = (
+        "Cover sheet Date: November 4, 2026. Attachment B Prepared date: November 6, 2026. "
+        "REVIEW NOTE: The cover sheet and Attachment B disagree on contract number, date, amount, schedule impact, and final approval."
+    )
+    report_conflict = validator.validate(sample_valid_raw, doc_06_text)
+    assert report_conflict.cleaned_values["date"] is None
+    assert report_conflict.needs_review is True
+
+
+def test_validator_synonymous_approval_status_does_not_conflict(sample_valid_raw):
+    """Test that complementary review mentions ('Submitted for review') do not cancel 'Under Review'."""
+    sample_valid_raw.approval_status = InternalFieldExtraction(
+        value="Under Review",
+        evidence="STATUS: UNDER REVIEW",
+        conflicts_detected=["Submitted for review - no approval recorded"],
+    )
+
+    validator = ChangeOrderValidator()
+    doc_text = "Approval status: Submitted for review - no approval recorded. STATUS: UNDER REVIEW"
+    report = validator.validate(sample_valid_raw, doc_text)
+
+    assert report.cleaned_values["approval_status"] == "Under Review"
+    assert "approval_status" not in report.conflicts
+
+
+def test_validator_preserves_requester_with_professional_designation(sample_valid_raw):
+    """Test that requested_by preserves full name and professional designation when present in text."""
+    sample_valid_raw.requested_by = InternalFieldExtraction(
+        value="Jane Doe",
+        evidence="From: Jane Doe, Project Architect",
+    )
+    validator = ChangeOrderValidator()
+    doc_text = "From: Jane Doe, Project Architect\nProject: Highland School"
+    report = validator.validate(sample_valid_raw, doc_text)
+
+    assert report.cleaned_values["requested_by"] == "Jane Doe, Project Architect"
+
+
+def test_validator_preserves_specific_scope_description(sample_valid_raw):
+    """Test that a description referencing specific materials/hazards is accepted without truncation."""
+    specific_desc = (
+        "During demolition in the west classroom wing, the contractor discovered "
+        "concealed asbestos-containing floor adhesive beneath the existing vinyl tile. "
+        "Safe abatement, air-clearance testing, and replacement of the floor finish required."
+    )
+    sample_valid_raw.description = InternalFieldExtraction(
+        value=specific_desc,
+        evidence="During demolition in the west classroom wing, the contractor discovered concealed asbestos-containing floor adhesive",
+    )
+    validator = ChangeOrderValidator()
+    doc_text = (
+        "RE: Request for additional contract time due to concealed conditions\n"
+        "During demolition in the west classroom wing, the contractor discovered "
+        "concealed asbestos-containing floor adhesive beneath the existing vinyl tile."
+    )
+    report = validator.validate(sample_valid_raw, doc_text)
+
+    # Full description including the hazard detail must be preserved
+    assert "asbestos-containing floor adhesive" in (report.cleaned_values["description"] or "")
+    assert report.needs_review is False
+
+
+def test_validator_normalizes_unicode_hyphens_in_description(sample_valid_raw):
+    """Test that Unicode non-breaking hyphens (\u2011) and dashes in description are normalized to standard ASCII hyphens."""
+    sample_valid_raw.description = InternalFieldExtraction(
+        value="concealed asbestos\u2011containing floor adhesive beneath existing vinyl\u2011tile",
+        evidence="concealed asbestos-containing floor adhesive",
+    )
+    validator = ChangeOrderValidator()
+    report = validator.validate(
+        sample_valid_raw, "source text with asbestos-containing floor adhesive"
+    )
+    assert (
+        report.cleaned_values["description"]
+        == "concealed asbestos-containing floor adhesive beneath existing vinyl-tile"
+    )
+    assert "\u2011" not in report.cleaned_values["description"]
+    assert "asbestos-containing floor adhesive" in report.cleaned_values["description"]
+
+
+def test_validator_keeps_existing_full_requester_designation(sample_valid_raw):
+    """Test that requested_by keeps already-extracted designation intact."""
+    sample_valid_raw.requested_by = InternalFieldExtraction(
+        value="Jane Doe, Project Architect",
+        evidence="From: Jane Doe, Project Architect",
+    )
+    validator = ChangeOrderValidator()
+    doc_text = "From: Jane Doe, Project Architect\nProject: Highland School"
+    report = validator.validate(sample_valid_raw, doc_text)
+
+    assert report.cleaned_values["requested_by"] == "Jane Doe, Project Architect"
+
+
+

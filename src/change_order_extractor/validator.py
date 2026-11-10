@@ -126,7 +126,7 @@ class ChangeOrderValidator:
 
         # 5. Requested by
         report.cleaned_values["requested_by"] = self._validate_requested_by(
-            raw_extraction, report
+            raw_extraction, report, source_text
         )
 
         # 6. Description
@@ -233,10 +233,32 @@ class ChangeOrderValidator:
         self, raw: RawLLMExtraction, source_text: str, report: ValidationReport
     ) -> Optional[str]:
         # Check date conflicts
-        if raw.date.conflicts_detected or self._has_document_discrepancy("date", source_text):
+        # Distinguish a change-order date from an attachment preparation date.
+        # Only report a contradiction if the dates refer to the same semantic field or the document explicitly establishes a conflict.
+        explicit_doc_conflict = self._has_document_discrepancy("date", source_text)
+        has_true_conflict = False
+
+        if explicit_doc_conflict:
+            has_true_conflict = True
+        elif raw.date.conflicts_detected:
+            filtered_conflicts = []
+            for c in raw.date.conflicts_detected:
+                c_lower = c.lower()
+                # Distinguish change-order date from attachment preparation date
+                is_attachment_prep = any(
+                    p in c_lower for p in ["attachment prep", "prepared date", "preparation date"]
+                )
+                if is_attachment_prep and not explicit_doc_conflict:
+                    continue
+                filtered_conflicts.append(c)
+
+            if filtered_conflicts and self._is_true_date_conflict(filtered_conflicts, raw.date.value):
+                has_true_conflict = True
+
+        if has_true_conflict:
             all_conflicts = list(raw.date.conflicts_detected)
-            if self._has_document_discrepancy("date", source_text):
-                all_conflicts.append("Document indicates conflicting dates between sections.")
+            if explicit_doc_conflict:
+                all_conflicts.append("Document explicitly indicates conflicting dates between sections.")
             report.conflicts["date"] = all_conflicts
             report.add_issue(
                 "date",
@@ -273,7 +295,10 @@ class ChangeOrderValidator:
         return iso_val
 
     def _validate_requested_by(
-        self, raw: RawLLMExtraction, report: ValidationReport
+        self,
+        raw: RawLLMExtraction,
+        report: ValidationReport,
+        source_text: Optional[str] = None,
     ) -> Optional[str]:
         val = raw.requested_by.value
         if not val or not val.strip():
@@ -285,7 +310,25 @@ class ChangeOrderValidator:
                 trigger_review=False,  # Not critical enough alone to fail if others pass, but noted
             )
             return None
-        return val.strip()
+
+        val_cleaned = val.strip()
+
+        # If designation is present in raw extraction or source text, preserve full name and role
+        if "," not in val_cleaned and source_text:
+            evidence_and_source = f"{raw.requested_by.evidence or ''}\n{source_text}"
+            m = re.search(
+                rf"(?:From:\s*|\b){re.escape(val_cleaned)},\s*([A-Z][A-Za-z\s\-/]{{2,40}}?)(?=$|[\r\n,;])",
+                evidence_and_source,
+            )
+            if m:
+                designation = m.group(1).strip()
+                if not any(
+                    temporal in designation.lower()
+                    for temporal in ["yesterday", "today", "tomorrow", "on ", "at "]
+                ):
+                    val_cleaned = f"{val_cleaned}, {designation}"
+
+        return val_cleaned
 
     def _validate_description(
         self, raw: RawLLMExtraction, report: ValidationReport
@@ -300,13 +343,22 @@ class ChangeOrderValidator:
                 trigger_review=True,
             )
             return None
-        return val.strip()
+
+        # Normalize Unicode hyphens/dashes and whitespace variants to standard ASCII
+        cleaned = val.strip()
+        cleaned = re.sub(r"[\u2010\u2011\u2012\u2013\u2014\u2212]", "-", cleaned)
+        cleaned = re.sub(r"[\u00a0\u202f]", " ", cleaned)
+        return cleaned
 
     def _validate_amount(
         self, raw: RawLLMExtraction, source_text: str, report: ValidationReport
     ) -> Optional[float]:
-        # Check for amount conflicts (e.g. Sample 06: $15,000 on cover vs $14,800 on Attachment B)
-        if raw.amount.conflicts_detected or self._has_document_discrepancy("amount", source_text):
+        # Check for genuine amount conflicts (e.g. Sample 06: $18,400 on cover vs $14,800 on Attachment B)
+        has_conflict = (
+            self._has_document_discrepancy("amount", source_text)
+            or (raw.amount.conflicts_detected and self._is_true_amount_conflict(raw.amount.conflicts_detected, raw.amount.value))
+        )
+        if has_conflict:
             all_conflicts = list(raw.amount.conflicts_detected)
             if self._has_document_discrepancy("amount", source_text):
                 all_conflicts.append("Document sections provide conflicting amount figures.")
@@ -320,19 +372,42 @@ class ChangeOrderValidator:
             )
             return None
 
-        # Check if amount is merely an unapproved tentative estimate (Sample 05)
+        # Check if amount is an unapproved tentative estimate (Sample 05)
         lower_source = source_text.lower()
-        if "estimate and is not a final" in lower_source or "estimate and is not an approved" in lower_source:
+        is_estimate = (
+            "estimate and is not a final" in lower_source
+            or "estimate and is not an approved" in lower_source
+            or "estimated amount" in lower_source
+            or (raw.amount.reasoning and "estimate" in raw.amount.reasoning.lower())
+        )
+
+        val = raw.amount.value
+        # If value is None but document explicitly contains an estimated amount (e.g. +$6,200)
+        if val is None and is_estimate:
+            est_match = re.search(
+                r"estimated amount[^\n$]*\+?\$?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)",
+                lower_source,
+            )
+            if not est_match:
+                est_match = re.search(
+                    r"add\s+\$([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)",
+                    lower_source,
+                )
+            if est_match:
+                try:
+                    val = float(est_match.group(1).replace(",", ""))
+                except ValueError:
+                    val = None
+
+        if is_estimate and val is not None:
             report.add_issue(
                 "amount",
                 "estimate_only",
-                "Amount stated is merely an estimate and not an approved or agreed adjustment.",
-                action_taken="set_to_null",
+                "Amount stated is an estimate and not a final approved adjustment.",
+                action_taken="keep_estimate",
                 trigger_review=True,
             )
-            return None
 
-        val = raw.amount.value
         if val is None:
             # Check if document is schedule-only or missing amount
             evidence = (raw.amount.evidence or "").lower()
@@ -340,7 +415,7 @@ class ChangeOrderValidator:
                 # Valid schedule-only change order (Sample 03)
                 return None
 
-            # Incomplete amount (e.g., Sample 05 with only estimate or missing)
+            # Incomplete amount (e.g., missing)
             report.add_issue(
                 "amount",
                 "missing",
@@ -384,9 +459,11 @@ class ChangeOrderValidator:
         self, raw: RawLLMExtraction, source_text: str, report: ValidationReport
     ) -> Optional[int]:
         # Check schedule conflicts (e.g. Sample 06: 5 days vs 9 days)
-        if raw.schedule_impact_days.conflicts_detected or self._has_document_discrepancy(
-            "schedule", source_text
-        ):
+        has_conflict = (
+            self._has_document_discrepancy("schedule", source_text)
+            or (raw.schedule_impact_days.conflicts_detected and self._is_true_int_conflict(raw.schedule_impact_days.conflicts_detected, raw.schedule_impact_days.value))
+        )
+        if has_conflict:
             all_conflicts = list(raw.schedule_impact_days.conflicts_detected)
             if self._has_document_discrepancy("schedule", source_text):
                 all_conflicts.append("Document sections state conflicting schedule impact days.")
@@ -429,9 +506,16 @@ class ChangeOrderValidator:
         self, raw: RawLLMExtraction, report: ValidationReport, source_text: str = ""
     ) -> Optional[str]:
         # Check approval conflicts (e.g. Sample 06: Approved on cover vs director countersignature outstanding)
-        if raw.approval_status.conflicts_detected or self._has_document_discrepancy(
-            "approval", source_text
-        ):
+        has_conflict = (
+            self._has_document_discrepancy("approval", source_text)
+            or (
+                raw.approval_status.conflicts_detected
+                and self._is_true_approval_conflict(
+                    raw.approval_status.conflicts_detected, raw.approval_status.value
+                )
+            )
+        )
+        if has_conflict:
             all_conflicts = list(raw.approval_status.conflicts_detected)
             if self._has_document_discrepancy("approval", source_text):
                 all_conflicts.append("Document sections state conflicting approval statuses.")
@@ -458,11 +542,24 @@ class ChangeOrderValidator:
 
         cleaned = val.strip().upper()
 
+        # Never infer Pending approval simply because a document is unsigned.
+        # If approval status is not explicitly stated, return null.
+        if any(u in cleaned for u in ["UNSIGNED", "NOT SIGNED", "AWAITING SIGNATURE", "NO SIGNATURE", "UNRECORDED"]):
+            if not any(s in cleaned for s in ["APPROVED", "PENDING", "UNDER REVIEW", "REVIEW", "REJECTED", "DRAFT"]):
+                report.add_issue(
+                    "approval_status",
+                    "unsigned_not_status",
+                    "Document is unsigned but approval status is not explicitly stated.",
+                    action_taken="set_to_null",
+                    trigger_review=True,
+                )
+                return None
+
         if cleaned in {"APPROVED", "APPROVED - TIME EXTENSION ONLY", "EXECUTED", "APPROVED BY OWNER"}:
             return "Approved"
-        elif cleaned in {"PENDING", "PENDING OWNER APPROVAL", "PENDING APPROVAL", "PENDING SIGNATURE"}:
+        elif cleaned in {"PENDING", "PENDING OWNER APPROVAL", "PENDING APPROVAL"}:
             return "Pending Approval" if "APPROVAL" in cleaned else "Pending"
-        elif cleaned in {"UNDER REVIEW"}:
+        elif cleaned in {"UNDER REVIEW"} or "UNDER REVIEW" in cleaned or "SUBMITTED FOR REVIEW" in cleaned:
             report.add_issue(
                 "approval_status",
                 "under_review",
@@ -571,3 +668,115 @@ class ChangeOrderValidator:
                 continue
 
         return None
+
+    @staticmethod
+    def _is_true_amount_conflict(conflicts: list[str], current_val: Optional[float]) -> bool:
+        """Verify whether detected conflicts represent genuinely contradictory numbers."""
+        if not conflicts:
+            return False
+
+        found_values: set[float] = set()
+        if current_val is not None:
+            found_values.add(round(abs(current_val), 2))
+
+        for c_str in conflicts:
+            matches = re.findall(r"(?:USD|\$)?\s*\(?-?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\)?", c_str)
+            for m in matches:
+                try:
+                    num = round(float(m.replace(",", "")), 2)
+                    found_values.add(num)
+                except ValueError:
+                    continue
+
+        distinct = {v for v in found_values if v > 0}
+        return len(distinct) >= 2
+
+    @staticmethod
+    def _is_true_int_conflict(conflicts: list[str], current_val: Optional[int]) -> bool:
+        """Verify whether detected conflicts represent genuinely contradictory integer days."""
+        if not conflicts:
+            return False
+
+        found_ints: set[int] = set()
+        if current_val is not None:
+            found_ints.add(abs(current_val))
+
+        for c_str in conflicts:
+            matches = re.findall(r"\b(\d+)\b", c_str)
+            for m in matches:
+                try:
+                    found_ints.add(int(m))
+                except ValueError:
+                    continue
+
+        return len(found_ints) >= 2
+
+    @staticmethod
+    def _is_true_date_conflict(conflicts: list[str], current_val: Optional[str]) -> bool:
+        """Verify whether detected conflicts represent genuinely contradictory dates."""
+        if not conflicts:
+            return False
+
+        iso_dates: set[str] = set()
+        if current_val:
+            parsed = ChangeOrderValidator._parse_to_iso_date(current_val)
+            if parsed:
+                iso_dates.add(parsed)
+
+        for c_str in conflicts:
+            for token in re.findall(r"\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{2,4}|[A-Za-z]+ \d{1,2},? \d{4})\b", c_str):
+                parsed = ChangeOrderValidator._parse_to_iso_date(token)
+                if parsed:
+                    iso_dates.add(parsed)
+
+        return len(iso_dates) >= 2
+
+    @staticmethod
+    def _is_true_str_conflict(conflicts: list[str], current_val: Optional[str]) -> bool:
+        """Verify whether detected string conflicts represent distinct identifiers."""
+        if not conflicts:
+            return False
+        distinct = {c.strip().upper() for c in conflicts if c.strip()}
+        if current_val:
+            distinct.add(current_val.strip().upper())
+        return len(distinct) >= 2
+
+    @staticmethod
+    def _is_true_approval_conflict(conflicts: list[str], current_val: Optional[str]) -> bool:
+        """Check if detected conflicts represent genuinely distinct approval states."""
+        if not conflicts or not current_val:
+            return False
+
+        def normalize_state(s: str) -> str:
+            s_upper = s.upper().strip()
+            if any(k in s_upper for k in ["UNDER REVIEW", "SUBMITTED FOR REVIEW", "FOR REVIEW"]):
+                return "UNDER_REVIEW"
+            if any(k in s_upper for k in ["APPROVED", "EXECUTED"]):
+                return "APPROVED"
+            if any(k in s_upper for k in ["PENDING"]):
+                return "PENDING"
+            if any(k in s_upper for k in ["REJECTED", "DENIED", "DISAPPROVED"]):
+                return "REJECTED"
+            if any(k in s_upper for k in ["DRAFT"]):
+                return "DRAFT"
+            if any(k in s_upper for k in ["VOID", "CANCELLED"]):
+                return "VOID"
+            # General notes about no approval or unrecorded are consistent with Under Review or Pending
+            if "NO APPROVAL RECORDED" in s_upper or "AWAITING SIGNATURE" in s_upper:
+                return "UNAPPROVED_OR_REVIEW"
+            return s_upper
+
+        norm_current = normalize_state(current_val)
+        norm_conflicts = set()
+        for c in conflicts:
+            c_norm = normalize_state(c)
+            # If current status is UNDER_REVIEW and conflict note is "no approval recorded", they are complementary
+            if norm_current == "UNDER_REVIEW" and c_norm in {"UNDER_REVIEW", "UNAPPROVED_OR_REVIEW"}:
+                continue
+            norm_conflicts.add(c_norm)
+
+        if not norm_conflicts:
+            return False
+
+        norm_conflicts.add(norm_current)
+        return len(norm_conflicts) >= 2

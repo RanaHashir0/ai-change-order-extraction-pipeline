@@ -21,11 +21,11 @@
   },
   "description": {
     "value": "Following the security review held on November 4, the owner has requested electronic access-control locks at the twelve principal entrance doors. Replace the standard lever locksets shown in the original hardware schedule with networked electronic locksets compatible with the facility access-control system. Include locksets, power transfer hinges where needed, programming, and commissioning.",
-    "confidence": 1.0
+    "confidence": 0.9
   },
   "amount": {
-    "value": null,
-    "confidence": 0.92
+    "value": 6200.0,
+    "confidence": 0.71
   },
   "schedule_impact_days": {
     "value": null,
@@ -33,7 +33,7 @@
   },
   "approval_status": {
     "value": "Under Review",
-    "confidence": 0.86
+    "confidence": 0.96
   },
   "needs_review": true
 }

@@ -1,7 +1,10 @@
 """Multi-factor confidence scoring engine for construction change order extraction.
 
-Computes transparent, evidence-grounded confidence scores rather than relying
-blindly on raw LLM outputs. Distinguishes between value confidence and absence confidence.
+Computes heuristic confidence estimates based on multi-factor evidence grounding,
+explicitness, and business validation rules. These scores are heuristic indicators
+rather than statistically calibrated probabilities until empirically calibrated
+against a sufficiently large verified dataset. Distinguishes between value confidence
+and absence confidence.
 """
 
 from __future__ import annotations
@@ -189,9 +192,13 @@ class ConfidenceScorer:
         grounding_score = 0.0
 
         if evidence.strip():
-            # Normalized whitespace comparison
-            norm_evidence = " ".join(evidence.split()).lower()
-            norm_doc = " ".join(source_text.split()).lower()
+            # Normalized whitespace and Unicode hyphen comparison
+            norm_evidence = re.sub(
+                r"[\u2010-\u2015\u2212]", "-", " ".join(evidence.split()).lower()
+            )
+            norm_doc = re.sub(
+                r"[\u2010-\u2015\u2212]", "-", " ".join(source_text.split()).lower()
+            )
 
             if norm_evidence in norm_doc:
                 grounding_score = 1.0
@@ -212,8 +219,18 @@ class ConfidenceScorer:
         reasoning = (raw_field.reasoning or "").lower()
         if any(w in reasoning for w in ["estimate", "inferred", "approximate", "implied", "unclear"]):
             explicitness = 0.6
-        if any(w in source_text.lower() for w in ["estimate and is subject to", "estimated amount"]) and f_name == "amount":
+        if any(w in source_text.lower() for w in ["estimate and is subject to", "estimated amount", "estimate and is not a final"]) and f_name == "amount":
             explicitness = 0.5
+
+        # Check if requested_by is incomplete (e.g. designation omitted)
+        if f_name == "requested_by" and isinstance(final_val, str) and "," not in final_val:
+            check_text = f"{raw_field.evidence or ''}\n{source_text}"
+            m_desig = re.search(
+                rf"(?:From:\s*|\b){re.escape(final_val)},\s*([A-Z][A-Za-z\s\-/]{{2,40}}?)(?=$|[\r\n,;])",
+                check_text,
+            )
+            if m_desig:
+                explicitness = min(explicitness, 0.7)
 
         # 3. Validation Status
         validation_score = 1.0

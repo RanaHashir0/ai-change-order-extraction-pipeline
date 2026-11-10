@@ -28,6 +28,7 @@ Your task is to analyze construction change order documents (PDF or plain text) 
    - "amount": Net contract price impact as a float.
      * Price increases / additions MUST be POSITIVE (e.g., "$15,250.00" -> 15250.0).
      * Deductive change orders, price reductions, or credits MUST be NEGATIVE (e.g., "($4,500.00)" or "Credit of $4,500" -> -4500.0).
+     * If an estimated amount is explicitly stated (e.g. "Estimated amount: ADD $6,200.00"), extract the numeric value (e.g. 6200.0) with verbatim evidence and note the estimate in reasoning.
      * If the document indicates $0 or schedule-only, use 0.0 or null according to explicit document statements.
    - "schedule_impact_days": Net schedule impact in integer days.
      * Schedule extensions / additional days MUST be POSITIVE integers (e.g., "14 calendar days" -> 14).
@@ -36,17 +37,36 @@ Your task is to analyze construction change order documents (PDF or plain text) 
 
 3. DATES & FORMATS:
    - "date": Represent as ISO format "YYYY-MM-DD" when the date is unambiguous.
-   - If multiple dates appear (e.g., issue date vs. signature date), identify the primary change order date and document any discrepancies in "conflicts_detected".
+   - Distinguish a change-order date from an attachment preparation date or signature/approval date.
+   - Only report a contradiction if the dates refer to the same semantic field or the document explicitly establishes a conflict.
 
-4. APPROVAL STATUS:
+4. DESCRIPTION — SCOPE OF WORK:
+   - "description": Capture the specific scope of work, reason for change, materials involved, hazardous conditions, or work items described in the document body.
+   - Prefer the detailed body paragraph over a subject-line heading or RE: line. For example, if the RE line says "additional contract time due to concealed conditions" but the body paragraph specifies "concealed asbestos-containing floor adhesive beneath the existing vinyl tile", the description MUST include the specific material and location detail from the body.
+   - Include all key specifics: materials, locations, hazard types, affected systems, or work activities explicitly stated.
+   - Do NOT reduce the description to only the subject-line paraphrase if the document body contains more precise scope detail.
+   - Do NOT fabricate details not present in the document.
+
+5. REQUESTED BY & DESIGNATIONS:
+   - "requested_by": Extract the person, contractor, architect, engineer, or representative requesting the change order.
+   - When a professional role, title, or designation is explicitly associated with the requester's name in the document (e.g. "From: Name, Title" or "Name, Role"), preserve BOTH the full name and the professional designation (e.g., "Priya Shah, Project Architect" or "Elena Brooks, Project Manager").
+   - Do NOT truncate or omit explicit professional designations appearing alongside the requester's name.
+   - Do NOT invent or fabricate designations if none are stated in the document.
+
+6. APPROVAL STATUS:
    - Extract the exact state explicitly indicated by the document (e.g., "Approved", "Pending", "Pending Approval", "Rejected", "Under Review", "Draft").
-   - DO NOT invent or assume approval. If signatures or approvals are unsigned, pending, or conditional, mark as "Pending" or as explicitly stated.
+   - NEVER infer "Pending" approval simply because a document or signature block is unsigned.
+   - If approval status is not explicitly stated in the document, return null.
 
-5. CONFLICT DETECTION:
-   - Thoroughly inspect the document for conflicting information (e.g. differing amounts on cover sheet vs. itemized table, differing dates, conflicting change order numbers).
-   - If conflicting values exist, list every conflicting mention in the "conflicts_detected" array for that field.
+7. CONFLICT DETECTION:
+   - Thoroughly inspect the document for conflicting information (e.g. differing amounts on cover sheet vs. itemized table, differing dates, conflicting contract numbers).
+   - NOTE: Accounting parentheses "($X)" and negative sign "-$X" denote the exact same negative credit amount and are NOT a conflict.
+   - Line items or cost breakdowns that match or sum up to the total are NOT conflicts.
+   - Distinguish a change-order date from an attachment preparation date. Only report a contradiction if the dates refer to the same semantic field or the document explicitly establishes a conflict.
+   - Only report in "conflicts_detected" when two separate sections of the document genuinely contradict or disagree on the final value (e.g. cover sheet says $18,400 but pricing sheet says $14,800, or document explicitly states sections disagree).
+   - If genuine conflicting values exist, list every conflicting mention in the "conflicts_detected" array for that field.
 
-6. OUTPUT FORMAT:
+8. OUTPUT FORMAT:
    - Return a valid, pure JSON object strictly conforming to the requested schema. Do not output markdown code blocks or conversational text.
 """
 

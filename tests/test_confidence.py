@@ -166,3 +166,37 @@ def test_ocr_quality_discount():
 
     assert q_digital == 1.0
     assert q_ocr == 0.88
+
+
+def test_confidence_discounts_incomplete_requester_extraction(sample_raw_extraction):
+    """Test confidence is discounted if requester designation is present in doc but omitted in final value."""
+    scorer = ConfidenceScorer()
+
+    doc_text = "From: Priya Shah, Project Architect\nProject: Cedar Grove School"
+    sample_raw_extraction.requested_by = InternalFieldExtraction(
+        value="Priya Shah",
+        evidence="From: Priya Shah, Project Architect",
+    )
+
+    # Incomplete extraction: only the name without designation
+    report_incomplete = ValidationReport(
+        cleaned_values={"requested_by": "Priya Shah"},
+        needs_review=False,
+    )
+    result_incomplete = scorer.evaluate(sample_raw_extraction, report_incomplete, doc_text)
+    score_incomplete = result_incomplete.field_scores["requested_by"]
+
+    # Complete extraction: with designation
+    report_complete = ValidationReport(
+        cleaned_values={"requested_by": "Priya Shah, Project Architect"},
+        needs_review=False,
+    )
+    sample_raw_extraction.requested_by.value = "Priya Shah, Project Architect"
+    result_complete = scorer.evaluate(sample_raw_extraction, report_complete, doc_text)
+    score_complete = result_complete.field_scores["requested_by"]
+
+    # Incomplete extraction score must be strictly less than complete extraction score
+    assert score_incomplete.final_confidence < score_complete.final_confidence
+    assert score_incomplete.explicitness == 0.7
+    assert score_complete.final_confidence == 1.0
+

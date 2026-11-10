@@ -219,3 +219,19 @@ def test_negative_amount_and_schedule():
         res = client.extract("Contract text")
         assert res.amount.value == -4200.50
         assert res.schedule_impact_days.value == -3
+
+
+def test_description_prompt_requires_body_detail_over_subject_line():
+    """Test that the system prompt includes the DESCRIPTION rule requiring body paragraph specificity.
+
+    This is a regression guard: ensures the prompt instructs the LLM to prefer detailed
+    body paragraph scope over paraphrased RE: / subject-line headings.
+    """
+    from change_order_extractor.llm_client import EXTRACTION_SYSTEM_PROMPT
+
+    # Must contain DESCRIPTION section
+    assert "DESCRIPTION" in EXTRACTION_SYSTEM_PROMPT
+    # Must mention body paragraph preference over subject line
+    assert "body paragraph" in EXTRACTION_SYSTEM_PROMPT.lower() or "body" in EXTRACTION_SYSTEM_PROMPT.lower()
+    # Must mention not reducing to subject-line paraphrase
+    assert "subject-line" in EXTRACTION_SYSTEM_PROMPT or "RE:" in EXTRACTION_SYSTEM_PROMPT
